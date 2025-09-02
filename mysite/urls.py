@@ -29,6 +29,7 @@ urlpatterns = [
     path("users/", include('users.urls')),
     path("articles/", include('articles.urls')),
     path("social/", include('social.urls')),
+    path("verify/", include('verify.urls')),
 
     # 刷新 access
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

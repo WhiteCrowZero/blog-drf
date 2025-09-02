@@ -3,24 +3,25 @@ import uuid
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveUpdateAPIView, ListCreateAPIView, ListAPIView, \
-    RetrieveAPIView
+    RetrieveAPIView, GenericAPIView
 from .models import UserContact
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
     UserInfoSerializer, UserContactSerializer
 from rest_framework.response import Response
-from services import auth, base_view, permissions
+from services import auth, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 from rest_framework import serializers, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 User = get_user_model()
 
 
-class RegisterView(base_view.PublicView):
+class RegisterView(GenericAPIView):
     """ 用户注册视图（普通注册，只支持邮箱+用户名） """
     serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -36,9 +37,10 @@ class RegisterView(base_view.PublicView):
         })
 
 
-class LoginView(base_view.PublicView):
+class LoginView(GenericAPIView):
     """ 普通登录视图（邮箱/用户名登录） """
     serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -69,9 +71,10 @@ class LogoutView(APIView):
         return Response({"detail": "登出成功"}, status=status.HTTP_200_OK)
 
 
-class OauthLoginView(base_view.PublicView):
+class OauthLoginView(GenericAPIView):
     """ 第三方登录视图（可以选择登录后绑定，未绑定新创建账户） """
     serializer_class = OauthLoginSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)

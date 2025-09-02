@@ -16,3 +16,8 @@ def make_random_password(length=8):
     """生成随机密码"""
     chars = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choices(chars, k=length))
+
+def make_random_verify_code(length=5):
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choices(chars, k=length))
+

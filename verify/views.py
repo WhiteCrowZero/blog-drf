@@ -1,16 +1,27 @@
+import base64
+import random
+import re
+import string
+import uuid
 
+from django.conf import settings
+from django.http import JsonResponse
+from captcha.image import ImageCaptcha
+from apps.verify.services import cache_verify_service
+from rest_framework.permissions import AllowAny
+from utils.base_view import BaseView
+from .services import sms_service, email_service
+from utils import check
+from rest_framework.generics import GenericAPIView
+from services import auth
 
-class ImageCaptchaView(APIView):
-    @staticmethod
-    def _random_code(length=5):
-        """生成随机验证码"""
-        chars = string.ascii_letters + string.digits  # abcABC123
-        return ''.join(random.choices(chars, k=length))
+class ImageCaptchaView(GenericAPIView):
+    permission_classes = [AllowAny]
 
     def get(self, request):
         """生成图片验证码并返回给前端"""
         # 生成随机验证码
-        code = self._random_code()
+        code = auth.make_random_verify_code()
 
         # 生成验证码图片
         image = ImageCaptcha(width=280, height=90)

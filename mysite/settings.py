@@ -175,3 +175,74 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'SECURITY': [{'Bearer': []}],  # 告诉 OpenAPI 使用 Bearer token
 }
+
+
+# 配置日志
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    # 日志格式
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname}: {message}',
+            'style': '{',
+        },
+    },
+
+    # 日志输出
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(BASE_DIR / 'logs/blog.log'),  # 需转换为 str,
+            'formatter': 'verbose',
+            'maxBytes': 100 * 1024 * 1024,  # 最大 100MB
+            'backupCount': 10,
+            'encoding': 'utf-8',
+        },
+    },
+
+    # 日志管理器
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    }
+}
+
+# 跨域配置
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = [
+    'http://127.0.0.1:8000',
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# 配置 Redis 缓存
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    },
+    'captcha': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/2',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    },
+}

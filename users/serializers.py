@@ -1,6 +1,5 @@
 from django.contrib import auth
 from django.contrib.auth import get_user_model, authenticate
-from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import UserContact
