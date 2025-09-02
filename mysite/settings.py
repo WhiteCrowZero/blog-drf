@@ -246,3 +246,32 @@ CACHES = {
         }
     },
 }
+
+# 验证码过期时间
+CAPTCHA_EXPIRE_SECONDS = 60 * 5
+
+# 邮箱设置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25
+EMAIL_HOST_USER = '13820826029@163.com'
+EMAIL_HOST_PASSWORD = 'JBx8sk3ARxSULPvU'  # 授权码
+EMAIL_USE_TLS = True  # 是否使用TLS安全连接
+
+# 邮件内容配置
+EMAIL_SUBJECT = '视频字幕邮件验证码'
+DEFAULT_FROM_EMAIL = '视频字幕AI网'
+
+# sms 配置
+SMS_CONFIG = {
+    'account_id': '2c94811c9787a27f0198447ee07d2808',
+    'app_id': '2c94811c9787a27f0198447ee23d280f',
+    'account_key': '66f89fc6785244d9baffb30f6a906d59',
+    'template_id': '1'
+}
+
+# 第三方登录密钥
+# 微博
+WEIBO_APP_KEY = '1772507673'
+WEIBO_APP_SECRET = '6e74162f453994e7e03baf4c099271a0'
+WEIBO_REDIRECT_URI = 'https://api.weibo.com/oauth2/default.html'

@@ -138,7 +138,7 @@ class UserContactDetailView(RetrieveUpdateDestroyAPIView):
             raise serializers.ValidationError("授权码不能为空")
 
         # 调用第三方接口获取 openid
-        openid = auth.oauth_register(serializer.instance.type, code)
+        openid = auth.oauth_authentication(serializer.instance.type, code)
         if not openid:
             raise serializers.ValidationError("第三方授权失败")
 

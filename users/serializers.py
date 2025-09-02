@@ -2,8 +2,8 @@ from django.contrib import auth
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import UserContact
-from services import auth
+from services import auth, oauth
+from users.models import UserContact
 
 User = get_user_model()
 
@@ -81,7 +81,7 @@ class OauthLoginSerializer(serializers.ModelSerializer):
         fields = ['type', 'code']
 
     def validate_type(self, value):
-        if value not in dict(UserContact.CONTACT_CHOICES):
+        if value not in dict(oauth.CONTACT_CHOICES):
             raise serializers.ValidationError("不支持的第三方类型")
         return value
 
@@ -93,8 +93,10 @@ class OauthLoginSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         type = attrs.get('type')
         code = attrs.get('code')
+        if not code:
+            raise serializers.ValidationError("授权码不能为空")
 
-        openid = auth.oauth_register(type, code)
+        openid = auth.oauth_authentication(type, code)
         if not openid:
             raise serializers.ValidationError("第三方授权失败")
 
@@ -116,8 +118,10 @@ class UserContactSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         type = validated_data['type']
         code = validated_data.get('code')
+        if not code:
+            raise serializers.ValidationError("授权码不能为空")
 
-        openid = auth.oauth_register(type, code)
+        openid = auth.oauth_authentication(type, code)
         if not openid:
             raise serializers.ValidationError("授权失败")
 

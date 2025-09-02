@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-
+from services.oauth import CONTACT_CHOICES
 
 class CustomUser(AbstractUser):
     bio = models.CharField(max_length=255, default='该用户暂未填写简介', null=True, blank=True, verbose_name="个人简介")
@@ -23,13 +23,6 @@ class CustomUser(AbstractUser):
 
 
 class UserContact(models.Model):
-    CONTACT_CHOICES = (
-        ('google', 'Google'),
-        ('facebook', 'Facebook'),
-        ('qq', 'QQ'),
-        ('wechat', 'WeChat'),
-        ('weibo', 'Weibo'),
-    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
