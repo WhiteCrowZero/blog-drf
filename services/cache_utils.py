@@ -10,6 +10,7 @@ Description : 为其他服务提供基础的缓存服务
 from django.conf import settings
 from django.core.cache import caches
 
+
 class CacheVerifyService:
     @staticmethod
     def set_verify_code(key, code, cache='default', exp=settings.DEFAULT_EXPIRE_SECONDS):
@@ -38,4 +39,3 @@ class CacheVerifyService:
 
 
 cache_verify_service = CacheVerifyService()
-

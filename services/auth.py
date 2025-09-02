@@ -4,6 +4,7 @@ import string
 from rest_framework_simplejwt.tokens import RefreshToken
 from services.oauth import OauthWeiboVerify
 
+
 def generate_tokens_for_user(user):
     """使用 simple-jwt 生成 access/refresh token"""
     refresh = RefreshToken.for_user(user)
@@ -20,7 +21,9 @@ def make_random_verify_code(length=5):
     chars = string.ascii_letters + string.digits
     return ''.join(random.choices(chars, k=length))
 
+
 oauth_weibo_verify = OauthWeiboVerify()
+
 
 def oauth_authentication(type, code):
     try:

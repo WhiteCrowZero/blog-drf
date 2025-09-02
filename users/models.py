@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from services.oauth import CONTACT_CHOICES
 
+
 class CustomUser(AbstractUser):
     bio = models.CharField(max_length=255, default='该用户暂未填写简介', null=True, blank=True, verbose_name="个人简介")
     avatar = models.ImageField(
@@ -12,6 +13,7 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name="头像"
     )
+    is_active_account = models.BooleanField(default=False)  # 用户是否激活（业务逻辑用，系统的 is_activate 保留，用作系统逻辑）
 
     class Meta:
         db_table = 'tb_custom_user'

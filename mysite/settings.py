@@ -145,9 +145,10 @@ REST_FRAMEWORK = {
     ),
 
     # 权限
-    # 不需要认证的接口会继承 PublicView
+    # 公开的接口，视图内单独进行覆盖设置
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",  # 默认所有接口都需要登录
+        "services.permissions.IsActiveAccount",  # 默认所有的接口都需要激活访问
     ),
 
     # 限流
@@ -175,7 +176,6 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'SECURITY': [{'Bearer': []}],  # 告诉 OpenAPI 使用 Bearer token
 }
-
 
 # 配置日志
 LOGGING = {
@@ -245,10 +245,19 @@ CACHES = {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     },
+    'email': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/3',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    },
 }
 
 # 验证码过期时间
 CAPTCHA_EXPIRE_SECONDS = 60 * 5
+DEFAULT_EXPIRE_SECONDS = 60 * 5
+EMAIL_EXPIRE_SECONDS = 60 * 5
 
 # 邮箱设置
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -257,10 +266,6 @@ EMAIL_PORT = 25
 EMAIL_HOST_USER = '13820826029@163.com'
 EMAIL_HOST_PASSWORD = 'JBx8sk3ARxSULPvU'  # 授权码
 EMAIL_USE_TLS = True  # 是否使用TLS安全连接
-
-# 邮件内容配置
-EMAIL_SUBJECT = '视频字幕邮件验证码'
-DEFAULT_FROM_EMAIL = '视频字幕AI网'
 
 # sms 配置
 SMS_CONFIG = {

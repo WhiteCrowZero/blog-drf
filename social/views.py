@@ -1,9 +1,9 @@
 from django.contrib.auth import get_user_model
-from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import serializers, generics, permissions, status
-from django.db import transaction
+from rest_framework import serializers, generics, status
+from services import permissions
 from .models import Like, Collection, CollectionItem, Comment, Follow
 from .serializers import CollectionSerializer, LikeSerializer, CommentArticleSerializer, CommentUserSerializer, \
     ReplySerializer, FollowListSerializer
@@ -57,6 +57,7 @@ class CollectionDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
     # 指定 URL 中的参数名为 collection_id
     lookup_url_kwarg = 'collection_id'
+    permission_classes = [IsAuthenticated, permissions.IsSelf, permissions.IsActiveAccount]
 
     def get_queryset(self):
         return Collection.objects.filter(user=self.request.user)
@@ -84,7 +85,7 @@ class CollectionToggleView(APIView):
 class CommentArticleListView(generics.ListAPIView):
     """ 文章评一级论列表视图 """
     serializer_class = CommentArticleSerializer
-    permission_classes = [permissions.AllowAny]  # 所有人可见
+    permission_classes = [AllowAny]  # 所有人可见
 
     def get_queryset(self):
         article_slug = self.kwargs.get("slug")
@@ -97,7 +98,8 @@ class CommentArticleListView(generics.ListAPIView):
 class CommentRepliesView(generics.ListAPIView):
     """ 文章二级回复列表视图 """
     serializer_class = ReplySerializer
-    permission_classes = [permissions.AllowAny]
+    # 其他二级回复需要登录
+    # permission_classes = [AllowAny]
 
     def get_queryset(self):
         comment_id = self.kwargs.get("comment_id")

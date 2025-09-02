@@ -4,6 +4,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveUpdateAPIView, ListCreateAPIView, ListAPIView, \
     RetrieveAPIView, GenericAPIView
+
+from services.code_send import email_service
 from .models import UserContact
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
@@ -27,6 +29,8 @@ class RegisterView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        # 发送激活链接
+        email_service.send_activate(user.email)
 
         access_token, refresh_token = auth.generate_tokens_for_user(user)
         return Response({
@@ -92,7 +96,8 @@ class OauthLoginView(GenericAPIView):
                 # 创建 User
                 user = User.objects.create_user(
                     username=f"{type}-{uuid.uuid4()}",
-                    password=auth.make_random_password()
+                    password=auth.make_random_password(),
+                    is_active_account = True
                 )
 
                 # 创建 UserContact
@@ -182,7 +187,7 @@ class UserInfoView(RetrieveAPIView):
 class UserInfoDetailView(RetrieveUpdateAPIView):
     """ 用户基本信息修改视图 """
     serializer_class = UserInfoSerializer
-    permission_classes = [IsAuthenticated, permissions.IsSelf]
+    permission_classes = [IsAuthenticated, permissions.IsSelf, permissions.IsActiveAccount]
     lookup_field = 'id'  # 指定查找字段，但其实下面 get_object 会直接用 request.user
 
     def get_object(self):

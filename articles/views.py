@@ -2,10 +2,11 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from services import permissions
 from .models import Article, Tag
 from .serializers import ArticleSerializer, TagSerializer, ArticleListDetailSerializer, ArticleListSerializer
-from rest_framework import generics, permissions, filters
+from rest_framework import generics, filters
 
 User = get_user_model()
 
@@ -35,6 +36,7 @@ class ArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
     """ 用户文章修改视图 """
     serializer_class = ArticleSerializer
     lookup_field = 'slug'  # 指定使用 slug 作为查找字段
+    permission_classes = [IsAuthenticated, permissions.IsSelf, permissions.IsActiveAccount]
 
     def get_queryset(self):
         # 只返回当前用户的文章
@@ -48,7 +50,7 @@ class ArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ArticleListView(generics.ListAPIView):
     """文章列表视图（公开版本，可选 user_id 查询）"""
     serializer_class = ArticleListSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['like_count', 'favorite_count', 'published_at']
     ordering = ['-published_at']
@@ -84,7 +86,7 @@ class ArticleListView(generics.ListAPIView):
 class ArticleListDetailView(generics.RetrieveAPIView):
     """ 文章详情页视图（公开版本） """
     serializer_class = ArticleListDetailSerializer
-    permission_classes = [permissions.AllowAny]  # 允许任何人访问
+    permission_classes = [AllowAny]  # 允许任何人访问
     lookup_field = 'slug'
 
     queryset = (
@@ -104,7 +106,7 @@ class ArticleListDetailView(generics.RetrieveAPIView):
 class TagListView(generics.ListAPIView):
     """ 标签列表视图（公开版本） """
     serializer_class = TagSerializer
-    permission_classes = [permissions.AllowAny]  # 允许任何人访问
+    permission_classes = [AllowAny]  # 允许任何人访问
 
     def get_queryset(self):
         # 按需：只列出“至少有一篇已发布文章”的标签
@@ -119,7 +121,7 @@ class TagArticleView(generics.ListAPIView):
     """ 标签文章列表视图（公开版本） """
     serializer_class = ArticleListSerializer
     lookup_field = 'slug'
-    permission_classes = [permissions.AllowAny]  # 允许任何人访问
+    permission_classes = [AllowAny]  # 允许任何人访问
 
     filter_backends = [filters.OrderingFilter]  # 启用排序
     ordering_fields = ['like_count', 'favorite_count', 'published_at']  # 可排序字段

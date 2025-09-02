@@ -1,76 +1,63 @@
+import time
+import uuid
+from django.conf import settings
+from verify.tasks import send_email
+from services.cache_utils import cache_verify_service
 
-from services.auth import make_random_verify_code
-from verify.tasks import send_email, send_sms
 
-class SendService(abc.ABC):
+class EmailService:
+    EMAIL_CACHE_NAME = 'email'
+
     @staticmethod
-    def _random_code(length=6):
-        chars = string.ascii_letters
-        return ''.join(random.choices(chars, k=length))
+    def send_activate(email):
+        """ 一次性激活验证码，不做次数限制 """
+        verify_code = uuid.uuid4().hex
+        verify_url = f'127.0.0.1:8000/verify/email/activate?verify_code={verify_code}'
+        key = f'email:{verify_code}'
+        cache_verify_service.set_verify_code(key, email)
 
-    def send(self, target):
-        pass
+        send_email.delay(email, verify_url)
+        return True
 
-
-class SmsService(SendService):
-    def send(self, phone):
-        # 生成验证码
-        verify_code = self._random_code()
-        key = f'phone:{phone}'
-        cache_verify_service.set_verify_code(key, verify_code)
-
-        # 发送次数限制
-        times_key = f'phone:times:{phone}'
-        times = cache_verify_service.get_verify_code(times_key)
-        if times is None:
-            times = 0
-        if times >= settings.MAX_SEND_TIMES:
-            return False, f'发送次数过多，{settings.SMS_EXPIRE_SECONDS / 60} 分钟后重试'
-        times += 1
-        cache_verify_service.set_verify_code(times_key, times)
-
-        # 发送间隔限制
-        last_key = f'phone:last:{phone}'
-        if times > 1:
-            last_time = cache_verify_service.get_verify_code(last_key)
-            if last_time is not None:
-                return False, f'发送间隔过短，{settings.SEND_INTERVAL} 秒后重试'
-        cache_verify_service.set_verify_code(last_key, True, exp=settings.SEND_INTERVAL)
-
-        # 发送短信
-        send_sms.delay(phone, verify_code)
-        return True, None
-
-
-class EmailService(SendService):
-    def send(self, email):
-        # 生成验证码
-        verify_code = self._random_code()
-        key = f'email:{email}'
-        cache_verify_service.set_verify_code(key, verify_code)
-
-        # 发送次数限制
-        times_key = f'email:times:{email}'
-        times = cache_verify_service.get_verify_code(times_key)
-        if times is None:
-            times = 0
-        if times >= settings.MAX_SEND_TIMES:
-            return False, f'发送次数过多，{settings.EMAIL_EXPIRE_SECONDS / 60} 分钟后重试'
-        times += 1
-        cache_verify_service.set_verify_code(times_key, times)
+    @staticmethod
+    def send_verify(email):
+        """ 邮箱更改验证码，次数频率进行限制 """
+        now_ts = int(time.time())  # 当前时间戳，秒级
 
         # 发送间隔限制
         last_key = f'email:last:{email}'
-        if times > 1:
-            last_time = cache_verify_service.get_verify_code(last_key)
-            if last_time is not None:
-                return False, f'发送间隔过短，{settings.SEND_INTERVAL} 秒后重试'
-        cache_verify_service.set_verify_code(last_key, True, exp=settings.SEND_INTERVAL)
+        last_ts = cache_verify_service.get_verify_code(last_key)
+        if last_ts and now_ts - int(last_ts) < settings.SEND_INTERVAL:
+            return False
 
-        # 发送短信
-        send_email.delay(email, verify_code)
-        return True, None
+        # 生成验证码
+        verify_code = uuid.uuid4().hex
+        key = f'email:{email}'
+        cache_verify_service.set_verify_code(key, verify_code)
+
+        # 发送邮件
+        send_email.delay(email, verify_code, mode='verify')
+
+        # 保存最后发送时间
+        cache_verify_service.set_verify_code(last_key, now_ts, exp=settings.SEND_INTERVAL)
+
+        return True
+
+    def check_verify_code(self, email, verify_code):
+        key = f'email:{email}'
+        right_code = cache_verify_service.get_verify_code(key, self.EMAIL_CACHE_NAME)
+        cache_verify_service.delete_verify_code(key, cache=self.EMAIL_CACHE_NAME)
+        if verify_code != right_code:
+            return False
+        return True
+
+    def check_activate_code(self, verify_code):
+        key = f'email:{verify_code}'
+        email = cache_verify_service.get_verify_code(key, self.EMAIL_CACHE_NAME)
+        cache_verify_service.delete_verify_code(key, cache=self.EMAIL_CACHE_NAME)
+        if not email:
+            return None
+        return email
 
 
-sms_service = SmsService()
 email_service = EmailService()

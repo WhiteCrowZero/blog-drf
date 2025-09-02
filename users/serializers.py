@@ -146,10 +146,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
         required=False,
         validators=[UniqueValidator(queryset=User.objects.all(), message="该用户名已被使用")]
     )
-    email = serializers.EmailField(
-        required=False,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="该邮箱已被注册")]
-    )
+    # 邮箱的修改单独通过其他接口验证
+    email = serializers.EmailField(read_only=True)
     followers = serializers.IntegerField(source="followers.count", read_only=True)
     articles_count = serializers.IntegerField(source="articles.count", read_only=True)
 
