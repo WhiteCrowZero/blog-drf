@@ -60,6 +60,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+# 忽略 Django 迁移文件
+*/migrations/*.py
+!*/migrations/__init__.py
 
 # Flask stuff:
 instance/
