@@ -22,6 +22,7 @@ def make_random_verify_code(length=5):
     return ''.join(random.choices(chars, k=length))
 
 
+# 系列第三方验证接口
 oauth_weibo_verify = OauthWeiboVerify()
 
 

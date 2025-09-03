@@ -4,7 +4,6 @@ from django.conf import settings
 from captcha.image import ImageCaptcha
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-from rest_framework.views import APIView
 from services.cache_utils import cache_verify_service
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -48,6 +47,7 @@ class ImageCaptchaView(GenericAPIView):
         # 将验证码保存到 Redis
         captcha_id = str(uuid.uuid4()).replace('-', '')
         key = f'captcha:{captcha_id}'
+        code = code.lower()
         cache_verify_service.set_verify_code(key, code, cache=self.CAPTCHA_CACHE_NAME,
                                              exp=settings.CAPTCHA_EXPIRE_SECONDS)
 
@@ -61,7 +61,7 @@ class ImageCaptchaView(GenericAPIView):
     def _check_captcha(self, captcha_id, user_code):
         key = f'captcha:{captcha_id}'
         right_code = cache_verify_service.get_verify_code(key, cache=self.CAPTCHA_CACHE_NAME)
-        cache_verify_service.delete_verify_code(key, cache=self.CAPTCHA_CACHE_NAME)
+        cache_verify_service.del_verify_code(key, cache=self.CAPTCHA_CACHE_NAME)
         if user_code != right_code:
             return False
         return True
@@ -73,9 +73,10 @@ class ImageCaptchaView(GenericAPIView):
 
         captcha_id = serializer.validated_data['captcha_id']
         user_code = serializer.validated_data['captcha_code']
+        user_code = user_code.lower()
 
-        is_valid = self._check_captcha(captcha_id, user_code)
         # 验证验证码
+        is_valid = self._check_captcha(captcha_id, user_code)
         if not is_valid:
             return Response({"errors": "验证码错误"}, status=status.HTTP_400_BAD_REQUEST)
 
