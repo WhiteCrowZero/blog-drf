@@ -21,8 +21,6 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 User = get_user_model()
 
 
-# TODO: 重置密码视图功能
-
 class RegisterView(GenericAPIView):
     """ 用户注册视图（普通注册，只支持邮箱+用户名） """
     serializer_class = RegisterSerializer

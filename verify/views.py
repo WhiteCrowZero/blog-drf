@@ -3,28 +3,34 @@ import uuid
 from django.conf import settings
 from captcha.image import ImageCaptcha
 from django.contrib.auth import get_user_model
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 from services.cache_utils import cache_verify_service
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from services.code_send import email_service
 from rest_framework.generics import GenericAPIView, get_object_or_404
-from verify.serializers import CaptchaVerifySerializer, EmailVerifySerializer, EmailSendVerifySerializer
+
+from services.permissions import IsSelf
+from verify.serializers import CaptchaVerifySerializer, EmailVerifySerializer, EmailSendVerifySerializer, \
+    EmailSendActivateSerializer
 from services import auth
 
 User = get_user_model()
 
-# TODO: 测试邮箱验证码/激活/修改功能
 
-class VerifyRateThrottle(AnonRateThrottle):
+class CaptchaRateThrottle(AnonRateThrottle):
     rate = '5/min'  # 每个用户每分钟最多访问5次
+
+
+class EmailSendRateThrottle(UserRateThrottle):
+    rate = '1/min'
 
 
 class ImageCaptchaView(GenericAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [VerifyRateThrottle]
+    throttle_classes = [CaptchaRateThrottle]
     serializer_class = CaptchaVerifySerializer
 
     CAPTCHA_CACHE_NAME = "captcha"
@@ -76,7 +82,7 @@ class ImageCaptchaView(GenericAPIView):
         return Response({"message": "验证码正确"}, status=status.HTTP_200_OK)
 
 
-class EmailActivateView(APIView):
+class EmailActivateView(GenericAPIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -98,36 +104,50 @@ class EmailActivateView(APIView):
         return Response({"message": "邮箱激活成功"}, status=status.HTTP_200_OK)
 
 
-class EmailSendVerifyView(APIView):
-    serializer_class = EmailSendVerifySerializer
-    throttle_classes = [VerifyRateThrottle]
+class EmailActivateSendView(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsSelf]
+    throttle_classes = [EmailSendRateThrottle]
+    serializer_class = EmailSendActivateSerializer
 
     def post(self, request):
         email = request.data.get("email")
-        serializer = EmailSendVerifySerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email_service.send_verify(email)
+        email_service.send_activate(email)
+        return Response({"message": "邮箱激活链接发送成功"}, status=status.HTTP_200_OK)
 
-        return Response({"message": "邮箱验证码成功"}, status=status.HTTP_200_OK)
+
+class EmailSendVerifyView(GenericAPIView):
+    serializer_class = EmailSendVerifySerializer
+    throttle_classes = [EmailSendRateThrottle]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        new_email = serializer.validated_data.get("new_email")
+        email_service.send_verify(new_email)
+
+        return Response({"message": "邮箱验证码发送成功"}, status=status.HTTP_200_OK)
 
 
-class EmailVerifyView(APIView):
+class EmailVerifyView(GenericAPIView):
     serializer_class = EmailVerifySerializer
 
     def post(self, request):
-        serializer = EmailVerifySerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        verify_code = serializer.validated_data["verify_code"]
-        email = serializer.validated_data["email"]
-        new_email = serializer.validated_data["new_email"]
+        verify_code = serializer.validated_data.get("verify_code")
+        email = serializer.validated_data.get("email")
+        new_email = serializer.validated_data.get("new_email")
 
-        is_valid = email_service.check_verify_code(email, verify_code)
+        is_valid = email_service.check_verify_code(new_email, verify_code)
         if not is_valid:
             return Response({"error": "邮箱激活失败或激活码过期"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.get(email=email)
+        user = get_object_or_404(User, email=email)
         user.email = new_email
         user.save()
 
