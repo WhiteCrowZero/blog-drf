@@ -4,13 +4,15 @@ from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from services import permissions
-from .models import Article, Tag
-from .serializers import ArticleSerializer, TagSerializer, ArticleListDetailSerializer, ArticleListSerializer
+from .models import Article, Tag, ReadingHistory
+from .serializers import ArticleSerializer, TagSerializer, ArticleListDetailSerializer, ArticleListSerializer, \
+    ReadingHistorySerializer
 from rest_framework import generics, filters
+from articles.tasks import record_reading_history
+from django.db import transaction
 
 User = get_user_model()
 
-# TODO: 阅读历史功能（新建一对多模型）
 
 class ArticleView(generics.ListCreateAPIView):
     """ 用户文章列表视图 """
@@ -103,6 +105,28 @@ class ArticleListDetailView(generics.RetrieveAPIView):
         )
     )
 
+    # 方案一：直接重写retrieve方法，添加阅读记录模型
+    def retrieve(self, request, *args, **kwargs):
+        # 获取文章对象
+        instance = self.get_object()
+
+        # 如果用户已登录，记录阅读历史
+        if request.user.is_authenticated:
+            ReadingHistory.objects.update_or_create(
+                user=request.user,
+                article=instance,
+                defaults={'last_read_at': timezone.now()}
+            )
+
+        # 调用父类的 retrieve 方法，返回序列化后的文章数据
+        return super().retrieve(request, *args, **kwargs)
+
+    # # 方案二：重写 retrieve 方法，使用 celery 异步任务添加阅读记录模型
+    # def retrieve(self, request, *args, **kwargs):
+    #     instance = self.get_object()
+    #     if request.user.is_authenticated:
+    #         record_reading_history.delay(request.user.id, instance.id)
+
 
 class TagListView(generics.ListAPIView):
     """ 标签列表视图（公开版本） """
@@ -140,3 +164,19 @@ class TagArticleView(generics.ListAPIView):
             .prefetch_related('tags')
             .distinct()
         )
+
+
+class ReadingHistoryListView(generics.ListAPIView):
+    serializer_class = ReadingHistorySerializer
+
+    def get_queryset(self):
+        return ReadingHistory.objects.filter(user=self.request.user)
+
+
+class ReadingHistoryDestroyView(generics.DestroyAPIView):
+    serializer_class = ReadingHistorySerializer
+    lookup_field = 'id'
+    lookup_url_kwarg = 'history_id'
+
+    def get_queryset(self):
+        return ReadingHistory.objects.filter(user=self.request.user)

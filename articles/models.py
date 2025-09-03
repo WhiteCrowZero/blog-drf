@@ -65,21 +65,19 @@ class Tag(models.Model):
     def get_absolute_url(self):
         return reverse('tag-article', kwargs={'slug': self.slug})
 
-#
-# class ReadingHistory(models.Model):
-#     user = models.ForeignKey(
-#         settings.AUTH_USER_MODEL,
-#         on_delete=models.CASCADE,
-#         related_name="reading_history"
-#     )
-#     article = models.ForeignKey(
-#         Article,
-#         on_delete=models.CASCADE,
-#         related_name="read_by_users"
-#     )
-#     last_read_at = models.DateTimeField(auto_now=True)  # 最近一次阅读时间
-#     read_count = models.PositiveIntegerField(default=1)  # 阅读次数
-#     read_time = models.DateTimeField
-#
-#     class Meta:
-#         unique_together = ("user", "article")  # 防止重复记录
+
+class ReadingHistory(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reading_history"
+    )
+    article = models.ForeignKey(
+        Article,
+        on_delete=models.CASCADE,
+        related_name="read_by_users"
+    )
+    last_read_at = models.DateTimeField(auto_now=True)  # 最近一次阅读时间
+
+    class Meta:
+        unique_together = ("user", "article")  # 防止重复记录

@@ -8,6 +8,7 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveUpdate
 
 from services.code_send import email_service
 from .models import UserContact
+from articles.models import ReadingHistory
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
     UserInfoSerializer, UserContactSerializer, ResetPasswordSerializer
@@ -104,6 +105,7 @@ class DestroyUserView(APIView):
             with transaction.atomic():
                 user = request.user
                 UserContact.objects.filter(user=user).delete()
+                ReadingHistory.objects.filter(user=user).delete()
                 self.anonymize_user(user)
         except Exception as e:
             return Response({"detail": f"注销失败: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

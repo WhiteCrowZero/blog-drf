@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Article, Tag
+from .models import Article, Tag, ReadingHistory
 
 User = get_user_model()
 
@@ -55,17 +55,16 @@ class TagSerializer(serializers.ModelSerializer):
 class ArticleListSerializer(serializers.ModelSerializer):
     tags = TagNestedSerializer(many=True, read_only=True)
     author = AuthorNestedSerializer(read_only=True)
-    url = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField(read_only=True)
 
     like_count = serializers.IntegerField(read_only=True)
     favorite_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Article
-        exclude = ['created_at', 'updated_at', 'content', 'is_draft']
+        exclude = ['created_at', 'updated_at', 'content', 'is_draft', 'slug']
         extra_kwargs = {
             'published_at': {'read_only': True},
-            'slug': {'read_only': True},
             'cover_pic': {'required': False},
         }
 
@@ -76,17 +75,16 @@ class ArticleListSerializer(serializers.ModelSerializer):
 class ArticleListDetailSerializer(serializers.ModelSerializer):
     tags = TagNestedSerializer(many=True, read_only=True)
     author = AuthorNestedSerializer(read_only=True)
-    url = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField(read_only=True)
 
     like_count = serializers.IntegerField(read_only=True)
     favorite_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Article
-        exclude = ['created_at', 'updated_at', 'is_draft']
+        exclude = ['created_at', 'updated_at', 'is_draft', 'slug']
         extra_kwargs = {
             'published_at': {'read_only': True},
-            'slug': {'read_only': True},
             'cover_pic': {'required': False},
         }
 
@@ -101,17 +99,16 @@ class ArticleSerializer(serializers.ModelSerializer):
         required=False,
     )
     tag_list = TagNestedSerializer(many=True, read_only=True, source="tags")
-    url = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField(read_only=True)
 
     like_count = serializers.IntegerField(read_only=True)
     favorite_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Article
-        exclude = ['created_at', 'updated_at', 'author']
+        exclude = ['created_at', 'updated_at', 'author', 'slug']
         extra_kwargs = {
             'published_at': {'required': False},
-            'slug': {'read_only': True},
             'cover_pic': {'required': False},
         }
 
@@ -159,3 +156,11 @@ class ArticleSerializer(serializers.ModelSerializer):
             instance.tags.set(tag_objs)
 
         return instance
+
+
+class ReadingHistorySerializer(serializers.ModelSerializer):
+    article = ArticleListSerializer(read_only=True)
+
+    class Meta:
+        model = ReadingHistory
+        exclude = ['user']
