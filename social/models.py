@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import ValidationError
+
 
 class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="likes")
@@ -43,7 +43,9 @@ class CollectionItem(models.Model):
 
 
 class Comment(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comments")
+    # 保留用户评论，在删除账号时不级联删除
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name="comments")
     article = models.ForeignKey("articles.Article", on_delete=models.CASCADE, related_name="comments")
     content = models.CharField(max_length=2000, verbose_name="评论内容", null=False)
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies")
@@ -68,4 +70,3 @@ class Follow(models.Model):
 
     def is_following(self, user):
         return self.following.filter(following=user).exists()
-

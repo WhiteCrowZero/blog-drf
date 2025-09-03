@@ -16,6 +16,7 @@ from services import auth
 
 User = get_user_model()
 
+# TODO: 测试邮箱验证码/激活/修改功能
 
 class VerifyRateThrottle(AnonRateThrottle):
     rate = '5/min'  # 每个用户每分钟最多访问5次

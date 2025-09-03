@@ -71,6 +71,15 @@ class LoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
+class ResetPasswordSerializer(serializers.Serializer):
+    """ 密码重置序列化器 """
+    password = serializers.CharField(write_only=True, min_length=6)
+    confirm_password = serializers.CharField(write_only=True, min_length=6)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "两次输入的密码不一致"})
+        return attrs
 
 class OauthLoginSerializer(serializers.ModelSerializer):
     """ 第三方 注册/登录 序列化器 """

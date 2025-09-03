@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from django.utils import timezone
+
 from services.oauth import CONTACT_CHOICES
 
 
@@ -14,6 +16,8 @@ class CustomUser(AbstractUser):
         verbose_name="头像"
     )
     is_active_account = models.BooleanField(default=False)  # 用户是否激活（业务逻辑用，系统的 is_activate 保留，用作系统逻辑）
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'tb_custom_user'

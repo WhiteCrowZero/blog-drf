@@ -267,6 +267,9 @@ EMAIL_HOST_USER = '13820826029@163.com'
 EMAIL_HOST_PASSWORD = 'JBx8sk3ARxSULPvU'  # 授权码
 EMAIL_USE_TLS = True  # 是否使用TLS安全连接
 
+# 邮箱验证回调地址
+EMAIL_ACTIVATE_RETURN_URL = 'http://127.0.0.1:8000'
+
 # sms 配置
 SMS_CONFIG = {
     'account_id': '2c94811c9787a27f0198447ee07d2808',

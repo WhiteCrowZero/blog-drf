@@ -1,4 +1,5 @@
 import uuid
+from django.utils import timezone
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.views import APIView
@@ -9,7 +10,7 @@ from services.code_send import email_service
 from .models import UserContact
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
-    UserInfoSerializer, UserContactSerializer
+    UserInfoSerializer, UserContactSerializer, ResetPasswordSerializer
 from rest_framework.response import Response
 from services import auth, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +20,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 User = get_user_model()
 
+
+# TODO: 重置密码视图功能
 
 class RegisterView(GenericAPIView):
     """ 用户注册视图（普通注册，只支持邮箱+用户名） """
@@ -75,6 +78,77 @@ class LogoutView(APIView):
         return Response({"detail": "登出成功"}, status=status.HTTP_200_OK)
 
 
+class DestroyUserView(APIView):
+    """ 通用注销账户视图 """
+
+    @staticmethod
+    def anonymize_user(user):
+        """ 匿名化用户 """
+        user.username = f"user_{user.id}"
+        user.email = ""
+        user.avatar = "avatar/default.png"
+        user.bio = "该用户已注销"
+        user.is_active = False
+        user.is_active_account = False
+        user.is_deleted = True
+        user.deleted_at = timezone.now()
+        user.save()
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception:
+            return Response({"detail": "Token 注销失败"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                user = request.user
+                UserContact.objects.filter(user=user).delete()
+                self.anonymize_user(user)
+        except Exception as e:
+            return Response({"detail": f"注销失败: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "注销成功"}, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(GenericAPIView):
+    """ 重置密码 """
+    serializer_class = ResetPasswordSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        password = serializer.validated_data['password']
+        user = self.request.user
+        try:
+            # 重置密码
+            user.set_password(password)
+            user.save()
+
+            # 注销 refresh token
+            refresh_token = request.data.get("refresh")
+            if refresh_token:
+                try:
+                    token = RefreshToken(refresh_token)
+                    token.blacklist()
+                except Exception:
+                    pass
+
+            return Response({
+                "user_id": user.id,
+                "username": user.username,
+                "message": "重置密码成功",
+            })
+        except Exception as e:
+            return Response({
+                "user_id": user.id,
+                "username": user.username,
+                "message": "重置密码失败",
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
 class OauthLoginView(GenericAPIView):
     """ 第三方登录视图（可以选择登录后绑定，未绑定新创建账户） """
     serializer_class = OauthLoginSerializer
@@ -97,7 +171,7 @@ class OauthLoginView(GenericAPIView):
                 user = User.objects.create_user(
                     username=f"{type}-{uuid.uuid4()}",
                     password=auth.make_random_password(),
-                    is_active_account = True
+                    is_active_account=True
                 )
 
                 # 创建 UserContact

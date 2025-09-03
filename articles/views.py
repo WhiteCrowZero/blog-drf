@@ -10,6 +10,7 @@ from rest_framework import generics, filters
 
 User = get_user_model()
 
+# TODO: 阅读历史功能（新建一对多模型）
 
 class ArticleView(generics.ListCreateAPIView):
     """ 用户文章列表视图 """
