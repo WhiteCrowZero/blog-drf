@@ -2,13 +2,9 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from services import auth
+
 User = get_user_model()
-
-
-# POST 请求序列化器
-class CaptchaVerifySerializer(serializers.Serializer):
-    captcha_id = serializers.CharField(required=True)
-    captcha_code = serializers.CharField(required=True)
 
 
 class EmailVerifySerializer(serializers.Serializer):

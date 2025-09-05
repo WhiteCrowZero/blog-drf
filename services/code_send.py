@@ -23,16 +23,6 @@ class EmailService:
 
     def send_verify(self, email):
         """ 邮箱更改验证码，次数频率进行限制 """
-
-        # 针对发送频率的限流，在视图函数中进行
-        # now_ts = int(time.time())  # 当前时间戳，秒级
-        #
-        # # 发送间隔限制
-        # last_key = f'email:last:{email}'
-        # last_ts = cache_verify_service.get_verify_code(last_key)
-        # if last_ts and now_ts - int(last_ts) < settings.SEND_INTERVAL:
-        #     return False
-
         # 生成验证码
         verify_code = make_random_verify_code(length=6)
         key = f'email:{email}'
@@ -41,14 +31,12 @@ class EmailService:
         # 发送邮件
         send_email.delay(email, verify_code, mode='verify')
 
-        # # 保存最后发送时间
-        # cache_verify_service.set_verify_code(last_key, now_ts, cache=self.EMAIL_CACHE_NAME, exp=settings.SEND_INTERVAL)
-
         return True
 
     def check_verify_code(self, email, verify_code):
         key = f'email:{email}'
         right_code = cache_verify_service.get_verify_code(key, self.EMAIL_CACHE_NAME)
+        # 一次性，校验一次后，无论对错，立即删除
         cache_verify_service.del_verify_code(key, cache=self.EMAIL_CACHE_NAME)
         if verify_code != right_code:
             return False
@@ -57,6 +45,7 @@ class EmailService:
     def check_activate_code(self, verify_code):
         key = f'email:{verify_code}'
         email = cache_verify_service.get_verify_code(key, self.EMAIL_CACHE_NAME)
+        # 一次性，校验一次后，无论对错，立即删除
         cache_verify_service.del_verify_code(key, cache=self.EMAIL_CACHE_NAME)
         if not email:
             return None

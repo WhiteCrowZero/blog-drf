@@ -3,13 +3,12 @@ from django.db.models import Count
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from services import permissions
 from .models import Article, Tag, ReadingHistory
 from .serializers import ArticleSerializer, TagSerializer, ArticleListDetailSerializer, ArticleListSerializer, \
     ReadingHistorySerializer
 from rest_framework import generics, filters
 from articles.tasks import record_reading_history
-from django.db import transaction
+from services.permissions import IsSelf, IsActiveAccount
 
 User = get_user_model()
 
@@ -39,7 +38,7 @@ class ArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
     """ 用户文章修改视图 """
     serializer_class = ArticleSerializer
     lookup_field = 'slug'  # 指定使用 slug 作为查找字段
-    permission_classes = [IsAuthenticated, permissions.IsSelf, permissions.IsActiveAccount]
+    permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
 
     def get_queryset(self):
         # 只返回当前用户的文章

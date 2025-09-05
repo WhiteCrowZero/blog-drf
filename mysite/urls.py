@@ -25,10 +25,15 @@ from rest_framework_simplejwt.views import (
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
+    # 管理员
     path("admin/", admin.site.urls),
+    # 用户系统
     path("users/", include('users.urls')),
+    # 文章系统
     path("articles/", include('articles.urls')),
+    # 社交系统（点赞、订阅、评论等，不含聊天）
     path("social/", include('social.urls')),
+    # 验证系统
     path("verify/", include('verify.urls')),
 
     # 刷新 access

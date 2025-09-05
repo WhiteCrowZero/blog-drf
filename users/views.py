@@ -5,15 +5,18 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveUpdateAPIView, ListCreateAPIView, ListAPIView, \
     RetrieveAPIView, GenericAPIView
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from services.code_send import email_service
 from .models import UserContact
 from articles.models import ReadingHistory
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
-    UserInfoSerializer, UserContactSerializer, ResetPasswordSerializer
+    UserInfoSerializer, UserContactSerializer, ResetPasswordSerializer, LogoutSerializer, UserContactBindSerializer, \
+    UserContactUnbindSerializer
 from rest_framework.response import Response
-from services import auth, permissions
+from services import auth
+from services.permissions import IsSelf, IsActiveAccount
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 from rest_framework import serializers, status
@@ -31,9 +34,9 @@ class RegisterView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # 发送激活链接
+        # 发送邮件激活链接
         email_service.send_activate(user.email)
-
+        # 签发 token（包含 Access 和 Refresh）
         access_token, refresh_token = auth.generate_tokens_for_user(user)
         return Response({
             "user_id": user.id,
@@ -62,12 +65,17 @@ class LoginView(GenericAPIView):
         })
 
 
-class LogoutView(APIView):
+class LogoutView(GenericAPIView):
     """ 通用登出视图 """
+    serializer_class = LogoutSerializer
 
     def post(self, request):
         try:
-            refresh_token = request.data["refresh"]
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # 转换成 Token 对象，并将 refresh_token 拉入黑名单（access短期过期后自动失效）
+            refresh_token = serializer.validated_data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
         except Exception as e:
@@ -77,8 +85,9 @@ class LogoutView(APIView):
         return Response({"detail": "登出成功"}, status=status.HTTP_200_OK)
 
 
-class DestroyUserView(APIView):
+class DestroyUserView(GenericAPIView):
     """ 通用注销账户视图 """
+    serializer_class = LogoutSerializer
 
     @staticmethod
     def anonymize_user(user):
@@ -94,14 +103,19 @@ class DestroyUserView(APIView):
         user.save()
 
     def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         try:
-            refresh_token = request.data["refresh"]
+            # refresh token 拉入黑名单
+            refresh_token = serializer.validated_data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
         except Exception:
             return Response({"detail": "Token 注销失败"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            # 对敏感数据（如联系方式、阅读历史）进行硬删除，其他（如评论）级联设置为 NULL 软删除
             with transaction.atomic():
                 user = request.user
                 UserContact.objects.filter(user=user).delete()
@@ -127,14 +141,10 @@ class ResetPasswordView(GenericAPIView):
             user.set_password(password)
             user.save()
 
-            # 注销 refresh token
-            refresh_token = request.data.get("refresh")
-            if refresh_token:
-                try:
-                    token = RefreshToken(refresh_token)
-                    token.blacklist()
-                except Exception:
-                    pass
+            # 注销 refresh token，强制当前登录状态下线（不依赖前端）
+            tokens = OutstandingToken.objects.filter(user=user)
+            for t in tokens:
+                BlacklistedToken.objects.get_or_create(token=t)
 
             return Response({
                 "user_id": user.id,
@@ -162,10 +172,11 @@ class OauthLoginView(GenericAPIView):
         openid = serializer.validated_data['openid']
 
         try:
+            # 有相关账号直接登录（登录）
             user_contact = UserContact.objects.get(type=type, openid=openid)
             user = user_contact.user
         except UserContact.DoesNotExist:
-            # 创建新账号（注册）
+            # 没有相关账号，创建新账号（注册）
             with transaction.atomic():
                 # 创建 User
                 user = User.objects.create_user(
@@ -202,7 +213,6 @@ class UserContactView(ListCreateAPIView):
 
 class UserContactDetailView(RetrieveUpdateDestroyAPIView):
     """ 用户绑定的第三方登录方式视图，修改或删除 """
-    serializer_class = UserContactSerializer
     lookup_field = 'type'  # URL中传 type
 
     def get_object(self):
@@ -210,26 +220,15 @@ class UserContactDetailView(RetrieveUpdateDestroyAPIView):
         obj, _ = UserContact.objects.get_or_create(user=self.request.user, type=type)
         return obj
 
-    # PUT / PATCH -> 绑定或更新
-    def perform_update(self, serializer):
-        code = self.request.data.get('code')
-        if not code:
-            raise serializers.ValidationError("授权码不能为空")
-
-        # 调用第三方接口获取 openid
-        openid = auth.oauth_authentication(serializer.instance.type, code)
-        if not openid:
-            raise serializers.ValidationError("第三方授权失败")
-
-        serializer.save(openid=openid, is_bound=True)
-
-    # DELETE -> 解绑
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_bound = False
-        instance.openid = None
-        instance.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def get_serializer_class(self):
+        # 更新使用 code 为 write_only 的序列化器
+        if self.request.method in ['PUT', 'PATCH']:
+            return UserContactBindSerializer
+        # 删除使用不需要 code 的序列化器
+        elif self.request.method == 'DELETE':
+            return UserContactUnbindSerializer
+        # 其余如 get 可以直接获取对应的绑定联系方式的信息
+        return UserContactSerializer
 
 
 class UserInfoView(RetrieveAPIView):
@@ -252,6 +251,7 @@ class UserInfoView(RetrieveAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_object(self):
+        # 通过查询字符串参数，区分是查询自己的用户信息页，还是他人的用户信息页
         user_id = self.request.query_params.get("user_id")
         if user_id:
             return User.objects.get(id=user_id)
@@ -261,7 +261,8 @@ class UserInfoView(RetrieveAPIView):
 class UserInfoDetailView(RetrieveUpdateAPIView):
     """ 用户基本信息修改视图 """
     serializer_class = UserInfoSerializer
-    permission_classes = [IsAuthenticated, permissions.IsSelf, permissions.IsActiveAccount]
+    # 必须认证为自己的用户，才能修改自己的详情页
+    permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
     lookup_field = 'id'  # 指定查找字段，但其实下面 get_object 会直接用 request.user
 
     def get_object(self):

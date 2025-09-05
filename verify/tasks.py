@@ -4,20 +4,17 @@ from django.core.mail import send_mail
 from django.utils.html import strip_tags
 from mysite.celery import app
 
+"""
+所有发送的邮件模板集中到一个字典 HTML_MESSAGES 里
+其中 
+subject 为 邮件标题
+html_message 为 HTML邮件内容
+"""
 
-@app.task
-def send_email(email_recv, verify_code, mode='activate'):
-    try:
-        # 收件人列表格式化
-        if isinstance(email_recv, str):
-            email_recv = [email_recv]
-
-        if mode == 'activate':
-            # 邮件标题
-            subject = 'Blog 激活邮件'
-
-            # HTML 邮件内容
-            html_message = f"""
+HTML_MESSAGES = {
+    "activate": {
+        "subject": "Blog 激活邮件",
+        "html_message": """
                         <p>尊敬的用户，您好！</p>
                         <p>感谢您注册 <strong>Blog</strong>，请点击以下链接完成账户验证：</p>
                         <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{verify_code}</p>
@@ -26,12 +23,10 @@ def send_email(email_recv, verify_code, mode='activate'):
                         <hr>
                         <p style="color: gray; font-size: 12px;">此邮件由系统自动发送，请勿直接回复。</p>
                     """
-        elif mode == 'verify':
-            # 邮件标题
-            subject = 'Blog 邮箱验证邮件'
-
-            # HTML 邮件内容
-            html_message = f"""
+    },
+    "verify": {
+        "subject": "Blog 邮箱验证邮件",
+        "html_message": """
                         <p>尊敬的用户，您好！</p>
                         <p>请点击以下链接完成账户邮箱更改的验证：</p>
                         <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{verify_code}</p>
@@ -40,12 +35,27 @@ def send_email(email_recv, verify_code, mode='activate'):
                         <hr>
                         <p style="color: gray; font-size: 12px;">此邮件由系统自动发送，请勿直接回复。</p>
                     """
-        else:
+    },
+}
+
+
+@app.task
+def send_email(email_recv, verify_code, mode='activate'):
+    try:
+        # 收件人列表格式化
+        if isinstance(email_recv, str):
+            email_recv = [email_recv]
+
+        if mode not in HTML_MESSAGES.keys():
+            logging.error(f'邮件发送失败: 当前类型 {mode} 错误')
             raise ValueError("Mode is error")
+
+        subject = HTML_MESSAGES[mode]["subject"]
+        html_message = HTML_MESSAGES[mode]["html_message"]
 
         # 纯文本内容（避免部分邮箱不支持 HTML）
         plain_message = strip_tags(html_message)
-        # 发件人
+        # 发件人（必须和实际的邮箱一致）
         from_email = '13820826029@163.com'
         # 发送
         send_mail(

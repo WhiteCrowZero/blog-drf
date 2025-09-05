@@ -11,8 +11,8 @@ from rest_framework.response import Response
 from services.code_send import email_service
 from rest_framework.generics import GenericAPIView, get_object_or_404
 
-from services.permissions import IsSelf
-from verify.serializers import CaptchaVerifySerializer, EmailVerifySerializer, EmailSendVerifySerializer, \
+from services.permissions import IsSelf, IsActiveAccount
+from verify.serializers import EmailVerifySerializer, EmailSendVerifySerializer, \
     EmailSendActivateSerializer
 from services import auth
 
@@ -28,9 +28,9 @@ class EmailSendRateThrottle(UserRateThrottle):
 
 
 class ImageCaptchaView(GenericAPIView):
+    """ 图片验证码 """
     permission_classes = [AllowAny]
     throttle_classes = [CaptchaRateThrottle]
-    serializer_class = CaptchaVerifySerializer
 
     CAPTCHA_CACHE_NAME = "captcha"
 
@@ -57,30 +57,6 @@ class ImageCaptchaView(GenericAPIView):
             "captcha_image": f"data:image/png;base64,{img_base64}"
         }
         return Response(data, status=status.HTTP_200_OK)
-
-    def _check_captcha(self, captcha_id, user_code):
-        key = f'captcha:{captcha_id}'
-        right_code = cache_verify_service.get_verify_code(key, cache=self.CAPTCHA_CACHE_NAME)
-        cache_verify_service.del_verify_code(key, cache=self.CAPTCHA_CACHE_NAME)
-        if user_code != right_code:
-            return False
-        return True
-
-    def post(self, request):
-        """验证前端提交的验证码"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        captcha_id = serializer.validated_data['captcha_id']
-        user_code = serializer.validated_data['captcha_code']
-        user_code = user_code.lower()
-
-        # 验证验证码
-        is_valid = self._check_captcha(captcha_id, user_code)
-        if not is_valid:
-            return Response({"errors": "验证码错误"}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({"message": "验证码正确"}, status=status.HTTP_200_OK)
 
 
 class EmailActivateView(GenericAPIView):
@@ -122,6 +98,7 @@ class EmailActivateSendView(GenericAPIView):
 class EmailSendVerifyView(GenericAPIView):
     serializer_class = EmailSendVerifySerializer
     throttle_classes = [EmailSendRateThrottle]
+    permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -135,6 +112,7 @@ class EmailSendVerifyView(GenericAPIView):
 
 class EmailVerifyView(GenericAPIView):
     serializer_class = EmailVerifySerializer
+    permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)

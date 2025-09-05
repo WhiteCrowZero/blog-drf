@@ -283,3 +283,8 @@ SMS_CONFIG = {
 WEIBO_APP_KEY = '1772507673'
 WEIBO_APP_SECRET = '6e74162f453994e7e03baf4c099271a0'
 WEIBO_REDIRECT_URI = 'https://api.weibo.com/oauth2/default.html'
+
+# 自定义登录校验（支持用户名或者邮箱）
+AUTHENTICATION_BACKENDS = [
+    'services.auth.EmailOrUsernameBackend',
+]
