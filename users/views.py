@@ -8,6 +8,7 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveUpdate
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from services.code_send import email_service
+from social.models import Like
 from .models import UserContact
 from articles.models import ReadingHistory
 from django.contrib.auth import get_user_model
@@ -120,6 +121,7 @@ class DestroyUserView(GenericAPIView):
                 user = request.user
                 UserContact.objects.filter(user=user).delete()
                 ReadingHistory.objects.filter(user=user).delete()
+                Like.objects.filter(user=user).delete()  # 临时性数据，关联较少，直接硬删除
                 self.anonymize_user(user)
         except Exception as e:
             return Response({"detail": f"注销失败: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

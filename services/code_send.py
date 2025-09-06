@@ -1,9 +1,8 @@
-import time
 import uuid
 from django.conf import settings
 
 from services.auth import make_random_verify_code
-from verify.tasks import send_email
+from services.tasks import send_email
 from services.cache_utils import cache_verify_service
 
 
@@ -18,7 +17,7 @@ class EmailService:
         key = f'email:{verify_code}'
         cache_verify_service.set_verify_code(key, email, cache=self.EMAIL_CACHE_NAME)
 
-        send_email.delay(email, verify_url)
+        send_email.delay(email, verify_code=verify_url)
         return True
 
     def send_verify(self, email):

@@ -24,7 +24,7 @@ SECRET_KEY = "django-insecure-f25=*-n-oj&(z_t_3i#l%^dr^=yn5t0d*2nocp*5e62=@igj#y
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",  # 可选，做 refresh 黑名单功能
     'drf_spectacular',
+    "debug_toolbar",
 
     "users",
     "articles",
@@ -48,9 +49,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    # "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -287,4 +289,10 @@ WEIBO_REDIRECT_URI = 'https://api.weibo.com/oauth2/default.html'
 # 自定义登录校验（支持用户名或者邮箱）
 AUTHENTICATION_BACKENDS = [
     'services.auth.EmailOrUsernameBackend',
+]
+
+# Debugger地址
+INTERNAL_IPS = [
+    "127.0.0.1",
+    "localhost",
 ]

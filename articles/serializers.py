@@ -135,6 +135,7 @@ class ArticleSerializer(serializers.ModelSerializer):
         """
         is_draft = attrs.get("is_draft", True)
         published_at = attrs.get("published_at")
+        attrs["published_at"] = self._validate_published_at(is_draft, published_at)
         return attrs
 
     def get_url(self, obj):

@@ -24,7 +24,7 @@ class CaptchaRateThrottle(AnonRateThrottle):
 
 
 class EmailSendRateThrottle(UserRateThrottle):
-    rate = '1/min'
+    rate = '2/min'
 
 
 class ImageCaptchaView(GenericAPIView):

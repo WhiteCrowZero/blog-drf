@@ -104,27 +104,20 @@ class ArticleListDetailView(generics.RetrieveAPIView):
         )
     )
 
-    # 方案一：直接重写retrieve方法，添加阅读记录模型
-    def retrieve(self, request, *args, **kwargs):
-        # 获取文章对象
-        instance = self.get_object()
-
-        # 如果用户已登录，记录阅读历史
-        if request.user.is_authenticated:
+    # 方案一：perform_retrieve方法，添加阅读记录模型
+    def perform_retrieve(self, instance):
+        if self.request.user.is_authenticated:
             ReadingHistory.objects.update_or_create(
-                user=request.user,
+                user=self.request.user,
                 article=instance,
                 defaults={'last_read_at': timezone.now()}
             )
 
-        # 调用父类的 retrieve 方法，返回序列化后的文章数据
-        return super().retrieve(request, *args, **kwargs)
+    # # 方案二：perform_retrieve方法，使用 celery 异步任务添加阅读记录模型
+    # def perform_retrieve(self, instance):
+    #     if self.request.user.is_authenticated:
+    #         record_reading_history.delay(self.request.user.id, instance.id)
 
-    # # 方案二：重写 retrieve 方法，使用 celery 异步任务添加阅读记录模型
-    # def retrieve(self, request, *args, **kwargs):
-    #     instance = self.get_object()
-    #     if request.user.is_authenticated:
-    #         record_reading_history.delay(request.user.id, instance.id)
 
 
 class TagListView(generics.ListAPIView):

@@ -1,8 +1,8 @@
 import logging
+from mysite.celery import app
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils.html import strip_tags
-from mysite.celery import app
 
 """
 所有发送的邮件模板集中到一个字典 HTML_MESSAGES 里
@@ -17,8 +17,8 @@ HTML_MESSAGES = {
         "html_message": """
                         <p>尊敬的用户，您好！</p>
                         <p>感谢您注册 <strong>Blog</strong>，请点击以下链接完成账户验证：</p>
-                        <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{verify_code}</p>
-                        <p>该链接 <strong>{int(settings.EMAIL_EXPIRE_SECONDS) / 60} 分钟</strong> 内有效，请尽快使用。</p>
+                        <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{}</p>
+                        <p>该链接 <strong>{} 分钟</strong> 内有效，请尽快使用。</p>
                         <p>如果您未进行过本网站的注册操作，请忽略此邮件。</p>
                         <hr>
                         <p style="color: gray; font-size: 12px;">此邮件由系统自动发送，请勿直接回复。</p>
@@ -29,8 +29,8 @@ HTML_MESSAGES = {
         "html_message": """
                         <p>尊敬的用户，您好！</p>
                         <p>请点击以下链接完成账户邮箱更改的验证：</p>
-                        <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{verify_code}</p>
-                        <p>该验证码 <strong>{int(settings.EMAIL_EXPIRE_SECONDS) / 60} 分钟</strong> 内有效，请尽快使用。</p>
+                        <p style="font-size: 22px; font-weight: bold; color: #FF4C4C;">{}</p>
+                        <p>该验证码 <strong>{} 分钟</strong> 内有效，请尽快使用。</p>
                         <p>如果您未进行过本网站的邮箱更改操作，请及时查看您的账户是否被盗。</p>
                         <hr>
                         <p style="color: gray; font-size: 12px;">此邮件由系统自动发送，请勿直接回复。</p>
@@ -38,6 +38,7 @@ HTML_MESSAGES = {
     },
 }
 
+expire_minutes = settings.EMAIL_EXPIRE_SECONDS // 60
 
 @app.task
 def send_email(email_recv, verify_code, mode='activate'):
@@ -52,6 +53,7 @@ def send_email(email_recv, verify_code, mode='activate'):
 
         subject = HTML_MESSAGES[mode]["subject"]
         html_message = HTML_MESSAGES[mode]["html_message"]
+        html_message = html_message.format(verify_code, expire_minutes)
 
         # 纯文本内容（避免部分邮箱不支持 HTML）
         plain_message = strip_tags(html_message)
