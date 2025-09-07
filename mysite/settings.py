@@ -169,6 +169,9 @@ REST_FRAMEWORK = {
 
     # API 文档
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+    # 数据库异常处理
+    'EXCEPTION_HANDLER': 'services.exceptions.database_exception_handler',
 }
 
 SPECTACULAR_SETTINGS = {
