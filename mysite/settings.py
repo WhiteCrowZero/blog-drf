@@ -29,6 +29,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'simpleui',  # 必须写在admin前面
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -40,14 +41,18 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",  # 可选，做 refresh 黑名单功能
     'drf_spectacular',
     "debug_toolbar",
+    "corsheaders",
+    'storages',
 
     "users",
     "articles",
     "social",
     "verify",
+    "ttt",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -114,13 +119,6 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = "static/"
-MEDIA_URL = "img/"
-MEDIA_ROOT = BASE_DIR / 'img'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -131,7 +129,7 @@ AUTH_USER_MODEL = 'users.CustomUser'
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),  # access token 30 分钟过期
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=3000),  # access token 30 分钟过期
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # refresh token 1 天过期
     "ROTATE_REFRESH_TOKENS": True,  # 刷新时颁发新的 refresh
     "BLACKLIST_AFTER_ROTATION": True,  # 旧的 refresh 失效
@@ -284,6 +282,7 @@ SMS_CONFIG = {
 }
 
 # 第三方登录密钥
+
 # 微博
 WEIBO_APP_KEY = '1772507673'
 WEIBO_APP_SECRET = '6e74162f453994e7e03baf4c099271a0'
@@ -299,3 +298,43 @@ INTERNAL_IPS = [
     "127.0.0.1",
     "localhost",
 ]
+
+# SimpleUI 配置
+SIMPLEUI_DEFAULT_THEME = 'admin.e-blue-pro.css'
+
+# MinIO 配置
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+# MinIO 配置
+STATIC_URL = "static/"
+MEDIA_URL = "img/"
+MEDIA_ROOT = BASE_DIR / 'img'
+STORAGES = {
+    # default是媒体文件的配置
+    'default': {
+        "BACKEND": "storages.backends.s3.S3Storage",  # 替换Djangpo默认的Stroage
+        "OPTIONS": {
+            'access_key': 'admin',  # Minio账号
+            'secret_key': 'admin123',  # Minio密码
+            'bucket_name': 'my-test-bucket', # Minio中桶名称，需要自己创建
+            'file_overwrite': False,  # 同名文件是否允许覆盖
+            'use_ssl': False,  # 是否使用Https，False就是使用Http
+            'endpoint_url': 'http://127.0.0.1:9000',  # Minio服务地址
+            # 'location': 'media'  # 指定媒体文件的MEDIA_ROOT，不指定就是桶的根目录
+        },
+    },
+    # staticfiles是静态文件的配置
+    'staticfiles': {
+        "BACKEND": "storages.backends.s3.S3Storage",  # 替换Djangpo默认的Stroage
+        "OPTIONS": {
+            'access_key': 'admin',
+            'secret_key': 'admin123',
+            'bucket_name': 'my-test-bucket',  # Minio中桶名称，程序不能自动创建
+            'file_overwrite': False,
+            'use_ssl': False,
+            'endpoint_url': 'http://127.0.0.1:9000',
+            'location': 'staticfiles',  # 收集静态文件到哪个目录，不指定默认在桶根目录下
+        },
+    },
+}

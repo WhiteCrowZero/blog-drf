@@ -14,7 +14,7 @@ from articles.models import ReadingHistory
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, OauthLoginSerializer, \
     UserInfoSerializer, UserContactSerializer, ResetPasswordSerializer, LogoutSerializer, UserContactBindSerializer, \
-    UserContactUnbindSerializer
+    UserContactUnbindSerializer, UserAvatarSerializer
 from rest_framework.response import Response
 from services import auth
 from services.permissions import IsSelf, IsActiveAccount
@@ -264,6 +264,16 @@ class UserInfoDetailView(RetrieveUpdateAPIView):
     """ 用户基本信息修改视图 """
     serializer_class = UserInfoSerializer
     # 必须认证为自己的用户，才能修改自己的详情页
+    permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
+    lookup_field = 'id'  # 指定查找字段，但其实下面 get_object 会直接用 request.user
+
+    def get_object(self):
+        # 直接返回当前登录用户
+        return self.request.user
+
+class UserAvatarView(RetrieveUpdateDestroyAPIView):
+    """ 用户头像查看、修改、删除视图 """
+    serializer_class = UserAvatarSerializer
     permission_classes = [IsAuthenticated, IsSelf, IsActiveAccount]
     lookup_field = 'id'  # 指定查找字段，但其实下面 get_object 会直接用 request.user
 

@@ -4,6 +4,11 @@ from autoslug import AutoSlugField
 from django.urls import reverse
 from django.utils import timezone
 
+# TODO: 给 slug 字段添加普通的查询索引
+# TODO: 添加 created_at , is_deleted, updated_at 等通用字段
+# TODO: 反范式设计，粉丝数和作品数设计成冗余字段
+# TODO: celery 定时器定期删除冗余数据
+# TODO: 事务最终一致性，主业务正常执行，其余任务异步执行，最终回到数据一致性
 
 class Article(models.Model):
     title = models.CharField(max_length=255, verbose_name="标题")

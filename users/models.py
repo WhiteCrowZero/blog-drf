@@ -5,6 +5,9 @@ from django.utils import timezone
 
 from services.oauth import CONTACT_CHOICES
 
+# TODO: 去除所有的外键约束
+# TODO: 所有模型设计成软删除
+
 
 class CustomUser(AbstractUser):
     bio = models.CharField(max_length=255, default='该用户暂未填写简介', null=True, blank=True, verbose_name="个人简介")

@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import RegisterView, LoginView, OauthLoginView, UserInfoView, UserContactView, \
-    UserInfoDetailView, UserContactDetailView, LogoutView, ResetPasswordView, DestroyUserView
+    UserInfoDetailView, UserContactDetailView, LogoutView, ResetPasswordView, DestroyUserView, UserAvatarView
 
 urlpatterns = [
     # 普通注册
@@ -15,6 +15,8 @@ urlpatterns = [
     # 基本信息
     path('info/', UserInfoView.as_view(), name='info'),
     path('info/detial/', UserInfoDetailView.as_view(), name='info-detail'),
+    # 用户头像
+    path('info/avatar/', UserAvatarView.as_view(), name='info-avatar'),
     # 绑定账号
     path('contact/', UserContactView.as_view(), name='contact'),
     path('contact/<str:type>/', UserContactDetailView.as_view(), name='contact-detail'),

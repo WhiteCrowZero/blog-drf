@@ -1,5 +1,10 @@
+import io
+import uuid
+
+from PIL import Image
 from django.contrib import auth
 from django.contrib.auth import get_user_model, authenticate
+from django.core.files.base import ContentFile
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from services import auth, oauth
@@ -218,7 +223,72 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'bio', 'avatar', 'last_name', 'first_name', 'email', 'articles_count', 'followers']
+        fields = ['id', 'username', 'bio', 'last_name', 'first_name', 'email', 'articles_count', 'followers']
         extra_kwargs = {
             'id': {'read_only': True}
         }
+
+
+class UserAvatarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'avatar']
+        extra_kwargs = {
+            'id': {'read_only': True}
+        }
+
+    def validate(self, attrs):
+        avatar_file = attrs.get("avatar")
+        if avatar_file:
+            # 文件格式检查
+            if not avatar_file.content_type.startswith("image/"):
+                raise serializers.ValidationError("必须上传图片文件")
+
+            # 文件大小（字节）
+            size = avatar_file.size
+            if size > 10 * 1024 * 1024:
+                raise serializers.ValidationError("文件超过 10MB")
+        else:
+            raise serializers.ValidationError("上传文件不能为空")
+
+        return attrs
+
+    @staticmethod
+    def _process_image(uploaded_file, target_size=400 * 1024):
+        # 打开图片
+        img = Image.open(uploaded_file)
+        img = img.convert("RGB")  # 避免 PNG 转 JPG 出错
+
+        # 压缩循环（保证小于400KB）
+        quality = 95
+        while True:
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", optimize=True, quality=quality)
+            size = buffer.tell()
+            if size <= target_size or quality <= 20:
+                break
+            quality -= 5
+
+        buffer.seek(0)
+        return buffer  # 可以直接传给 MinIO 客户端上传
+
+    def create(self, validated_data):
+        avatar_file = validated_data.get("avatar")
+        buffer = self._process_image(avatar_file)
+
+        # 生成唯一文件名
+        filename = f"{uuid.uuid4().hex}.jpg"
+
+        # Django 默认使用 DEFAULT_FILE_STORAGE 上传到 MinIO
+        validated_data["avatar"] = ContentFile(buffer.read(), name=filename)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        avatar_file = validated_data.get("avatar")
+        buffer = self._process_image(avatar_file)
+
+        filename = f"{instance.id}.jpg"
+        validated_data["avatar"] = ContentFile(buffer.read(), name=filename)
+        return super().update(instance, validated_data)
+
+# TODO: 文件去重

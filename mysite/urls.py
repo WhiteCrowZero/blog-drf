@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
+from drf_spectacular.renderers import OpenApiJsonRenderer, OpenApiYamlRenderer
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
@@ -36,12 +37,21 @@ urlpatterns = [
     # 验证系统
     path("verify/", include('verify.urls')),
 
+    path("ttt/", include("ttt.urls")),
+
     # 刷新 access
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # API 文档
     # OpenAPI schema JSON
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # 强制默认 JSON
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(
+            renderer_classes=[OpenApiJsonRenderer, OpenApiYamlRenderer]  # JSON 优先
+        ),
+        name="schema",
+    ),
     # Swagger UI
     path('api/docs/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     # Redoc
